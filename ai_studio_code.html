@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Growagawden v39.1 (Manual Save & Boosters)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Quicksand:wght@500;700&display=swap');
+
+        html, body { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            overflow: hidden; background-color: #1b5e20; 
+            font-family: 'Quicksand', sans-serif; user-select: none;
+            -webkit-user-select: none; touch-action: none;
+        }
+        canvas { display: block; width: 100%; height: 100%; }
+
+        /* UI STYLES */
+        .btn { cursor: pointer; border: none; border-radius: 15px; font-family: 'Fredoka One'; text-transform: uppercase; color: white; box-shadow: 0 4px 0 rgba(0,0,0,0.4); transition: transform 0.1s; }
+        .btn:active { transform: translateY(4px); box-shadow: none; }
+        .btn-green { background: #66bb6a; } .btn-red { background: #ef5350; } .btn-blue { background: #42a5f5; } .btn-yel { background: #fbc02d; color: #333; } .btn-gray { background: #78909c; } .btn-orange { background: #ff7043; } .btn-purp { background: #ab47bc; }
+
+        #intro-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #1b5e20, #004d40); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 99999; }
+        h1 { font-family: 'Fredoka One'; font-size: 70px; color: white; margin: 0; text-shadow: 0 6px 0 #000; }
+        #data-status { font-family: 'Quicksand'; font-weight: bold; margin-top: 10px; font-size: 18px; }
+        
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; z-index: 5000; }
+        .hud-panel { position: absolute; background: white; padding: 8px 20px; border-radius: 20px; border: 4px solid #37474f; pointer-events: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        #money-panel { top: 20px; left: 20px; font-size: 24px; color: #2e7d32; font-weight: 900; }
+        #clock-panel { top: 20px; left: 50%; transform: translateX(-50%); text-align: center; }
+        #save-indicator { position: absolute; top: 20px; left: 140px; font-size: 16px; color: #ffd700; font-weight: bold; opacity: 0; transition: opacity 0.5s; text-shadow: 1px 1px 0 #000; }
+
+        #event-container { position: absolute; top: 20px; right: 80px; display: flex; flex-direction: column; gap: 5px; align-items: flex-end; pointer-events: none; }
+        .event-badge { background: rgba(0,0,0,0.7); color: white; padding: 8px 15px; border-radius: 20px; font-weight: bold; border: 2px solid white; text-shadow: 1px 1px 0 #000; font-size: 14px; }
+
+        #backpack-btn { position: absolute; left: 20px; top: 90px; width: 60px; height: 60px; font-size: 30px; display: flex; align-items: center; justify-content: center; pointer-events: auto; border: 3px solid white; }
+        #settings-btn { position: absolute; top: 20px; right: 20px; width: 50px; height: 50px; font-size: 24px; display: flex; align-items: center; justify-content: center; pointer-events: auto; }
+        #admin-btn { position: absolute; bottom: 100px; right: 20px; width: 50px; height: 50px; font-size: 24px; display: flex; align-items: center; justify-content: center; pointer-events: auto; }
+
+        #hotbar-container { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; pointer-events: auto; }
+        .hotbar-slot { width: 50px; height: 50px; background: rgba(0,0,0,0.6); border: 3px solid #fff; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; position: relative; cursor: pointer; transition: 0.1s; }
+        .hotbar-slot.active { border-color: #ffd700; background: rgba(255, 215, 0, 0.3); transform: translateY(-5px); }
+        .slot-num { position: absolute; top: 2px; left: 4px; font-size: 10px; opacity: 0.8; }
+        .slot-icon { font-size: 22px; }
+        .slot-qty { position: absolute; bottom: 2px; right: 4px; font-size: 10px; font-weight: bold; color: #ffeb3b; }
+
+        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 20px; border: 5px solid #37474f; display: none; flex-direction: column; z-index: 20000; pointer-events: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.5); overflow: hidden; }
+        #shop-modal, #backpack-modal { width: 90%; height: 80%; max-width: 500px; max-height: 600px; }
+        
+        .shop-header { background: #66bb6a; color: white; padding: 15px; text-align: center; font-family: 'Fredoka One'; font-size: 28px; }
+        .shop-list, .inv-grid { flex: 1; overflow-y: auto; padding: 15px; background: #f1f8e9; }
+        .shop-row { display: flex; justify-content: space-between; align-items: center; background: white; padding: 12px; margin-bottom: 10px; border-radius: 12px; cursor: pointer; border: 2px solid transparent; }
+        .shop-row:hover { border-color: #66bb6a; transform: scale(1.01); }
+        .shop-row.disabled { opacity: 0.6; filter: grayscale(1); }
+
+        .inv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; }
+        .inv-item { background: #eceff1; padding: 10px; border-radius: 10px; text-align: center; cursor: pointer; border: 2px solid transparent; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .inv-item.selected { border-color: #29b6f6; background: #e1f5fe; transform: scale(1.05); }
+        .empty-msg { text-align: center; color: #78909c; font-weight: bold; padding: 20px; grid-column: 1 / -1; }
+
+        .tab-bar { display: flex; background: #37474f; padding: 10px; gap: 5px; justify-content: center; flex-wrap: wrap; }
+        .tab-btn { background: transparent; border: 2px solid #78909c; color: #cfd8dc; padding: 5px 10px; border-radius: 10px; cursor: pointer; font-weight: bold; flex: 1; text-align: center; white-space: nowrap; transition: 0.2s; }
+        .tab-btn.active { background: white; color: #37474f; border-color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+
+        #admin-ui, #settings-ui, #sell-modal { width: 300px; padding: 20px; text-align: center; display: none; z-index: 50000; }
+        #admin-ui input, #settings-ui input { width: 90%; padding: 8px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ccc; }
+        #admin-ui button, #settings-ui button, #sell-modal button { width: 100%; padding: 10px; margin-bottom: 5px; }
+
+        #bubble { position: absolute; background: white; padding: 5px 12px; border-radius: 15px; font-weight: bold; transform: translate(-50%, -100%); display: none; pointer-events: none; border: 3px solid #333; z-index: 100; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        #notify-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10000; }
+    </style>
+</head>
+<body>
+
+    <div id="intro-screen">
+        <h1>growagawden</h1>
+        <div style="color:#a5d6a7; margin-bottom:20px; font-weight:bold;">v39.1 | Manual Save & Boosters</div>
+        <div id="data-status">Checking Data...</div>
+        <br>
+        <button id="play-btn" class="btn btn-green" style="padding: 15px 60px; font-size: 24px;">PLAY</button>
+        <br><br>
+        <button id="wipe-btn" class="btn btn-red" style="padding: 10px; font-size: 12px;">⚠️ FORCE RESET</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+    <canvas id="notify-layer"></canvas>
+
+    <div id="ui-layer">
+        <div id="money-panel" class="hud-panel">$<span id="money-val">20</span></div>
+        <div id="save-indicator">💾 Saved</div>
+        <div id="clock-panel" class="hud-panel">
+            <div id="cycle-display">☀️ DAY</div>
+            <div id="restock-display" style="font-size: 12px; color: #555;">Stock: 5:00</div>
+        </div>
+        <div id="event-container"></div>
+
+        <button id="backpack-btn" class="btn btn-blue">🎒</button>
+        <button id="settings-btn" class="btn btn-gray">⚙️</button>
+        
+        <div id="hotbar-container"></div>
+        <div id="bubble">SPACE</div>
+        <button id="admin-btn" class="btn btn-red">🔒</button>
+        
+        <div id="admin-ui" class="modal">
+            <div style="text-align:right; cursor:pointer; color:#ef5350;" id="close-admin">✖</div>
+            <h3 style="margin-top:0;">ADMIN PANEL</h3>
+            <button class="btn btn-green" id="btn-inf-money">💰 Inf Money</button>
+            <button class="btn btn-blue" id="btn-force-restock">📦 Force Restock</button>
+            <button class="btn btn-gray" id="btn-stock-seeds">🌱 Stock Seeds</button>
+            <button class="btn btn-gray" id="btn-stock-pets">🐾 Stock Pets</button>
+            <button class="btn btn-purp" id="btn-stock-boosters">🚀 Stock Boosters</button>
+            <button class="btn btn-orange" id="btn-volcano">🌋 Trigger Volcano</button>
+            <button class="btn btn-blue" id="btn-force-rain">🌧️ Force Rain</button>
+            <button class="btn btn-green" id="btn-force-growth">🌿 2x Growth</button>
+            <button class="btn btn-yel" id="btn-force-luck">🍀 Luck Boost</button>
+            <input id="ann-txt" placeholder="Announcement...">
+            <button class="btn btn-red" id="btn-announce">📢 Announce</button>
+        </div>
+    </div>
+
+    <div id="settings-ui" class="modal">
+        <h3>SETTINGS</h3>
+        <label>Volume</label>
+        <input type="range" id="vol-slider" min="0" max="100" value="20">
+        <hr>
+        <button class="btn btn-blue" id="btn-manual-save" style="padding:15px; font-weight:bold;">💾 FORCE SAVE GAME</button>
+        <hr>
+        <input id="code-in" placeholder="Enter Code...">
+        <button class="btn btn-green" id="btn-redeem">Redeem</button>
+        <button class="btn btn-red" id="wipe-btn-2">⚠️ DELETE DATA</button>
+        <button class="btn btn-gray" id="close-settings">CLOSE</button>
+    </div>
+
+    <div id="sell-modal" class="modal">
+        <h2>MERCHANT</h2>
+        <button class="btn btn-green" id="sell-all">Sell All Produce</button>
+        <button class="btn btn-blue" id="sell-hand">Sell Equipped</button>
+        <button class="btn btn-yel" id="sell-appraise">Appraise Equipped</button>
+        <button class="btn btn-red" id="close-sell">CANCEL</button>
+    </div>
+
+    <div id="shop-modal" class="modal">
+        <div class="shop-header" id="shop-title">STORE</div>
+        <div class="shop-list" id="shop-content"></div>
+        <div style="padding:15px; background:#eee; text-align:center;">
+            <button class="btn btn-red" id="close-shop" style="width:100%; padding:15px; font-size:18px;">EXIT STORE</button>
+        </div>
+    </div>
+
+    <div id="backpack-modal" class="modal">
+        <div class="tab-bar">
+            <button class="tab-btn active" id="tab-seeds" onclick="tab('seeds')">🌱 Seeds</button>
+            <button class="tab-btn" id="tab-produce" onclick="tab('produce')">🍎 Produce</button>
+            <button class="tab-btn" id="tab-tools" onclick="tab('tools')">🛠️ Tools</button>
+            <button class="tab-btn" id="tab-pets" onclick="tab('pets')">🐾 Pets</button>
+            <button class="tab-btn" id="tab-brainrots" onclick="tab('brainrots')">👾 Brainrots</button>
+            <div style="color:white; margin-left:auto; cursor:pointer; font-size:20px;" id="close-backpack">✖</div>
+        </div>
+        <div style="text-align:center; padding:5px; background:#eceff1; font-size:12px;">Click Item + Press <b>1-9</b> to Equip</div>
+        <div class="inv-grid" id="inv-grid"></div>
+    </div>
+
+    <audio id="bgm" loop><source src="https://files.freemusicarchive.org/storage-freemusicarchive-org/music/ccCommunity/Chad_Crouch/Arps/Chad_Crouch_-_Algorithms.mp3"></audio>
+
+<script>
+/* ================= CONFIG ================= */
+const SAVE_KEY = 'gg_v39_1_save'; 
+const MAP_R=900, P_SPD=4;
+
+// THE SAVE FUNCTION - DEFINED AT TOP FOR VISIBILITY
+function saveGame(){
+    let ind = document.getElementById('save-indicator');
+    ind.style.opacity = '1';
+    if(window.saveTimer) clearTimeout(window.saveTimer);
+    window.saveTimer = setTimeout(()=>{ind.style.opacity='0'}, 1000);
+    
+    let data = {
+        money: money,
+        inventory: inventory,
+        ownedPets: ownedPets,
+        plots: plots,
+        hotbar: hotbar,
+        time: Date.now(),
+        redeemed: redeemed
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    console.log("Game Saved.");
+}
+
+const SEED_DB = [
+    { id: 0, name: "Blueberry", cost: 5, sell: 8, color: '#1e88e5', time: 30, rarity: 1.0, minStock: 5, maxStock: 15, icon: "🫐", type: 'bush' },
+    { id: 1, name: "Raspberry", cost: 10, sell: 18, color: '#e53935', time: 60, rarity: 1.0, minStock: 5, maxStock: 12, icon: "🍇", type: 'bush' },
+    { id: 2, name: "Turnip", cost: 20, sell: 35, color: '#F4EEFF', time: 90, rarity: 0.9, minStock: 4, maxStock: 10, icon: "🥔", type: 'single' },
+    { id: 3, name: "Carrot", cost: 50, sell: 80, color: '#FF9800', time: 120, rarity: 0.8, minStock: 3, maxStock: 8, icon: "🥕", type: 'single' },
+    { id: 4, name: "Tomato", cost: 200, sell: 350, color: '#F44336', time: 200, rarity: 0.7, minStock: 2, maxStock: 6, icon: "🍅", type: 'bush' },
+    { id: 5, name: "Corn", cost: 800, sell: 1500, color: '#FFEB3B', time: 300, rarity: 0.6, minStock: 2, maxStock: 5, icon: "🌽", type: 'single' },
+    { id: 6, name: "Cactus", cost: 5000, sell: 9000, color: '#2e7d32', time: 500, rarity: 0.5, minStock: 1, maxStock: 4, icon: "🌵", type: 'bush' },
+    { id: 7, name: "Pumpkin", cost: 8000, sell: 14000, color: '#E65100', time: 600, rarity: 0.4, minStock: 1, maxStock: 3, icon: "🎃", type: 'single' },
+    { id: 8, name: "Moon Berry", cost: 30000, sell: 55000, color: '#7986cb', time: 800, rarity: 0.3, minStock: 1, maxStock: 3, icon: "🌑", type: 'bush' },
+    { id: 9, name: "Sapphire Melon", cost: 500000, sell: 900000, color: '#00bcd4', time: 1500, rarity: 0.2, minStock: 0, maxStock: 2, icon: "💎", type: 'single' },
+    { id: 10, name: "Galaxy Berry", cost: 10000000, sell: 18000000, color: '#311b92', time: 5000, rarity: 0.01, minStock: 0, maxStock: 1, icon: "🌌", type: 'bush' }
+];
+
+const TOOLS = [
+    {id:'shovel', name:'Shovel', cost:0, desc:'Dig', icon:'⛏️', type:'tool'},
+    {id:'bucket', name:'Bucket', cost:10000, desc:'Water', icon:'🪣', type:'manual', r:1.0, max:5}, 
+    {id:'sprinkler_1', name:'Basic', cost:50000, desc:'Auto', icon:'🚿', type:'auto', rate:1, life:36000, r:1.0, max:3}, 
+    {id:'sprinkler_2', name:'Sparkle', cost:500000, desc:'Auto+', icon:'✨', type:'auto', rate:10, life:54000, r:0.6, max:2}, 
+    {id:'sprinkler_3', name:'Ultra', cost:5000000, desc:'Max', icon:'💦', type:'auto', rate:50, life:36000, r:0.25, max:1} 
+];
+const PETS = [
+    {id:'cat', name:'Luna', cost:250000, icon:'🐱', r:0.9, max:3}, 
+    {id:'dog', name:'Scout', cost:1000000, icon:'🐶', r:0.4, max:1} 
+];
+const BRAINROT_DB = [
+    { id: 'tralalero', name: 'Tralalero', icon: '🦈', income: 10 },
+    { id: 'bombardilo', name: 'Bombardilo', icon: '🐊', income: 5 },
+    { id: 'skibidi', name: 'Skibidi', icon: '🚽', income: 50 }
+];
+const SIZES = [{id:'s',n:'Small',m:0.8}, {id:'m',n:'Medium',m:1.0}, {id:'l',n:'Large',m:1.2}, {id:'g',n:'Giant',m:1.5}];
+
+// STATE
+const canvas=document.getElementById('gameCanvas'), ctx=canvas.getContext('2d');
+const nCtx=document.getElementById('notify-layer').getContext('2d');
+
+let money=20, inventory={seeds:{},produce:[],tools:{'shovel':1},brainrots:{}}, ownedPets={dog:0,cat:0};
+let plots=[], stock={seeds:{},tools:{},pets:{}}, nextRestock=Date.now()+300000;
+let hotbar=new Array(9).fill(null), activeSlot=0;
+let gameTime=0, DAY_LEN=1440000, isRain=false, isVolcano=false, rainChance=0.2;
+let player={x:0,y:300,moving:false,anim:0};
+let announcements=[], redeemed=[], keys={}, interact=null, selectedInvItem=null, currentTab='seeds';
+let admUnl=false, loopRunning=false;
+let catState={x:0,y:0,state:'awake',timer:0}, dogState={x:0,y:0,tx:0,ty:0,state:'roam',timer:7200};
+let meteorites=[], forestTrees=[];
+let activeBrainrots = []; 
+let events = { rain: 0, volcano: 0, growth: 0, luck: 0 };
+let brainrotTimer = 0; 
+let interactionTimer = 0; 
+
+const npcs=[
+    {x:-350,y:-350,t:'seeds',c:'#ffcc80',l:'SEEDS'},
+    {x:0,y:-400,t:'tools',c:'#90caf9',l:'BOOSTERS'},
+    {x:350,y:-350,t:'pets',c:'#e1bee7',l:'PETS'},
+    {x:-800,y:0,t:'sell',c:'#fff59d',l:'MERCHANT'}
+];
+
+document.addEventListener('DOMContentLoaded', () => {
+    checkData();
+    document.getElementById('play-btn').onclick=startGame;
+    document.getElementById('wipe-btn').onclick=hardReset;
+    document.getElementById('wipe-btn-2').onclick=hardReset;
+    document.getElementById('btn-manual-save').onclick=()=>{ saveGame(); alert("Game Saved!"); }; // MANUAL SAVE BUTTON
+    document.getElementById('backpack-btn').onclick=openBackpack;
+    document.getElementById('settings-btn').onclick=openSettings;
+    document.getElementById('admin-btn').onclick=tryAdmin;
+    document.getElementById('close-shop').onclick=()=>document.getElementById('shop-modal').style.display='none';
+    document.getElementById('close-backpack').onclick=()=>document.getElementById('backpack-modal').style.display='none';
+    document.getElementById('close-settings').onclick=()=>document.getElementById('settings-ui').style.display='none';
+    document.getElementById('close-admin').onclick=()=>document.getElementById('admin-ui').style.display='none';
+    document.getElementById('close-sell').onclick=()=>document.getElementById('sell-modal').style.display='none';
+    
+    document.getElementById('btn-inf-money').onclick=admMoney;
+    document.getElementById('btn-force-restock').onclick=admRestock;
+    document.getElementById('btn-force-rain').onclick=()=>triggerEvent('rain', 300000);
+    document.getElementById('btn-volcano').onclick=()=>triggerEvent('volcano', 300000);
+    document.getElementById('btn-force-growth').onclick=()=>triggerEvent('growth', 300000);
+    document.getElementById('btn-force-luck').onclick=()=>triggerEvent('luck', 300000);
+    document.getElementById('btn-announce').onclick=admAnn;
+    document.getElementById('btn-redeem').onclick=redeem;
+    document.getElementById('btn-stock-seeds').onclick=admStockSeeds;
+    document.getElementById('btn-stock-pets').onclick=admStockPets;
+    document.getElementById('btn-stock-boosters').onclick=admStockBoosters;
+    
+    document.getElementById('sell-all').onclick=()=>sellAction('all');
+    document.getElementById('sell-hand').onclick=()=>sellAction('hand');
+    document.getElementById('sell-appraise').onclick=()=>sellAction('appraise');
+    
+    document.getElementById('vol-slider').oninput=updVol;
+    
+    resize();
+    for(let i=0;i<300;i++){let a=Math.random()*Math.PI*2,r=MAP_R+100+Math.random()*1000;forestTrees.push({x:Math.cos(a)*r,y:Math.sin(a)*r,s:10+Math.random()*15,c:Math.random()>0.5?'#1b5e20':'#2e7d32'});}
+});
+
+function checkData() {
+    let d = localStorage.getItem(SAVE_KEY);
+    let el = document.getElementById('data-status');
+    if(d) { el.innerText = "✅ SAVE FOUND"; el.style.color = "#a5d6a7"; } 
+    else { el.innerText = "❌ NO SAVE DETECTED"; el.style.color = "#ef5350"; }
+}
+
+function startGame() {
+    document.getElementById('intro-screen').style.display='none';
+    document.getElementById('ui-layer').style.display='block';
+    document.getElementById('bgm').volume = 0.2; document.getElementById('bgm').play().catch(()=>{});
+    try { if(localStorage.getItem(SAVE_KEY)) loadGame(); else initNewGame(); } catch(e) { console.error("Loader failed, resetting garden.", e); initGarden(); }
+    if(!plots || plots.length===0) initGarden();
+    if(Object.keys(stock.seeds).length === 0) restock();
+    initHotbarUI(); updHUD();
+    if(!loopRunning) { loopRunning=true; loop(); }
+    setInterval(saveGame, 5000); 
+}
+
+function initNewGame(){money=20;inventory={seeds:{},produce:[],tools:{'shovel':1},brainrots:{}};hotbar=new Array(9).fill(null);hotbar[0]={type:'tool',id:'shovel'};plots=[];restock();initGarden();}
+
+function initGarden(){
+    plots = [];
+    let sx=-200,sy=-160;
+    for(let r=0;r<5;r++)for(let c=0;c<6;c++)plots.push({x:sx+(c*80),y:sy+(r*80),w:70,h:70,state:0,seedId:null,growth:0,mutations:[], type:'normal', sprinkler:null});
+    
+    let by = sy + (5*80) + 40;
+    for(let c=0;c<6;c++) plots.push({x:sx+(c*80), y:by, w:70, h:70, state:0, seedId:null, growth:0, mutations:[], type:'brainrot', sprinkler:null});
+}
+
+function initHotbarUI(){let hb=document.getElementById('hotbar-container');hb.innerHTML='';for(let i=0;i<9;i++){let d=document.createElement('div');d.className='hotbar-slot';d.innerHTML=`<span class="slot-num">${i+1}</span><span class="slot-icon" id="hb-i-${i}"></span><span class="slot-qty" id="hb-q-${i}"></span>`;d.onclick=()=>{if(hotbar[i]){hotbar[i]=null;ann("Unequipped",player.x,player.y);renderHotbar();if(document.getElementById('backpack-modal').style.display==='block')tab(currentTab);}else{activeSlot=i;renderHotbar();}};hb.appendChild(d);}renderHotbar();}
+
+function loop() { try{ update(); draw(); } catch(e){} requestAnimationFrame(loop); }
+
+function update() {
+    if(isNaN(player.x)) {player.x=0;player.y=300;}
+    gameTime=(gameTime+16.6)%DAY_LEN; 
+    let isNight = gameTime > DAY_LEN/2;
+    document.getElementById('cycle-display').innerText = isVolcano?"🌋 VOLCANO":(isNight?"🌙 NIGHT":"☀️ DAY");
+    document.getElementById('cycle-display').style.color = isVolcano?"#ff5722":(isNight?"#7986cb":"#fbc02d");
+
+    let now = Date.now();
+    let rainActive = now < events.rain;
+    let volcanoActive = now < events.volcano;
+    let growthActive = now < events.growth;
+    let luckActive = now < events.luck;
+
+    let html = '';
+    if(rainActive) html += `<div class="event-badge" style="background:#42a5f5">🌧️ ${Math.floor((events.rain-now)/60000)}:${Math.floor(((events.rain-now)%60000)/1000)}</div>`;
+    if(volcanoActive) html += `<div class="event-badge" style="background:#ef5350">🌋 ${Math.floor((events.volcano-now)/60000)}:${Math.floor(((events.volcano-now)%60000)/1000)}</div>`;
+    if(growthActive) html += `<div class="event-badge" style="background:#66bb6a">🌿 ${Math.floor((events.growth-now)/60000)}:${Math.floor(((events.growth-now)%60000)/1000)}</div>`;
+    if(luckActive) html += `<div class="event-badge" style="background:#fbc02d; color:#333">🍀 ${Math.floor((events.luck-now)/60000)}:${Math.floor(((events.luck-now)%60000)/1000)}</div>`;
+    document.getElementById('event-container').innerHTML = html;
+
+    if(!rainActive && !volcanoActive && Math.random()<0.0002) triggerEvent('rain',300000);
+
+    if(volcanoActive && Math.random()<0.1) meteorites.push({x:player.x+(Math.random()*1600-800),y:player.y-1000,targetY:player.y+(Math.random()*800-400),spd:15+Math.random()*5});
+    for(let i=meteorites.length-1;i>=0;i--){let m=meteorites[i];m.y+=m.spd;if(m.y>=m.targetY){plots.forEach(p=>{if(Math.hypot(p.x-m.x,p.y-m.y)<100&&p.state===1&&!p.mutations.includes('burned'))p.mutations.push('burned')});meteorites.splice(i,1);}}
+    
+    if(nextRestock-Date.now()<=0)restock();
+    document.getElementById('restock-display').innerText=`Stock: ${Math.floor(Math.max(0,nextRestock-Date.now())/60000)}m`;
+    
+    let dx=0,dy=0;
+    if(keys.ArrowUp||keys.w)dy=-1;if(keys.ArrowDown||keys.s)dy=1;if(keys.ArrowLeft||keys.a)dx=-1;if(keys.ArrowRight||keys.d)dx=1;
+    if(dx||dy){player.moving=true;player.anim+=0.05;let l=Math.sqrt(dx*dx+dy*dy);player.x+=(dx/l)*P_SPD;player.y+=(dy/l)*P_SPD;let d=Math.sqrt(player.x**2+player.y**2);if(d>MAP_R-20){player.x=(player.x/d)*(MAP_R-20);player.y=(player.y/d)*(MAP_R-20);}}else{player.moving=false;player.anim=0;}
+
+    // BRAINROT SPAWNER
+    brainrotTimer++;
+    if(brainrotTimer > 200) { 
+        brainrotTimer = 0;
+        if(activeBrainrots.length < 5) {
+            let type = BRAINROTS[Math.floor(Math.random()*BRAINROTS.length)];
+            activeBrainrots.push({
+                x: -MAP_R, y: 700 + (Math.random()*20 - 10), 
+                tx: MAP_R, ty: 700 + (Math.random()*20 - 10), 
+                icon: type.icon, id: type.id, name: type.name, 
+                life: 3000 
+            });
+        }
+    }
+    
+    let stealing = false;
+    for(let i=activeBrainrots.length-1; i>=0; i--){
+        let b = activeBrainrots[i];
+        if(b.x < b.tx) b.x += 2; 
+        if(b.x >= 900) { activeBrainrots.splice(i, 1); continue; }
+        
+        if(Math.hypot(player.x-b.x, player.y-b.y) < 60) {
+            if(keys['Space']) {
+                stealing = true;
+                interactionTimer++;
+                if(interactionTimer > 60) {
+                    sfx('coin');
+                    if(!inventory.brainrots[b.id]) inventory.brainrots[b.id]=0;
+                    inventory.brainrots[b.id]++;
+                    ann(`Stole ${b.name}!`, player.x, player.y);
+                    activeBrainrots.splice(i, 1);
+                    interactionTimer = 0;
+                    saveGame();
+                    continue;
+                }
+            }
+        }
+    }
+    if(!stealing) interactionTimer = 0;
+
+    // GROWTH LOGIC & SPRINKLERS
+    plots.forEach(p=>{
+        // Sprinkler logic
+        if(p.sprinkler) {
+            let sp = TOOLS.find(t=>t.id===p.sprinkler.id);
+            if(sp && p.state===1) p.growth += sp.rate/60; // Rate per frame
+            if(sp) p.sprinkler.life--;
+            if(p.sprinkler.life <= 0) p.sprinkler = null;
+        }
+
+        if(p.type === 'normal' && p.state===1){
+            if(rainActive&&!p.mutations.includes('wet'))p.mutations.push('wet');
+            let s=SEED_DB[p.seedId];
+            if(s){
+                let rate = 100/(s.time*60);
+                if(ownedPets.cat > 0) rate *= (1 + (ownedPets.cat * 0.2)); 
+                if(growthActive) rate *= 2; 
+                p.growth += rate;
+                if(p.growth>=100){p.state=2;p.growth=100;}
+            }
+        }
+        if(p.type === 'brainrot' && p.state === 1 && Math.random() < 0.005) {
+            let br = BRAINROT_DB.find(b => b.id === p.seedId);
+            if(br) { money += br.income; sfx('coin'); }
+        }
+    });
+    
+    if(ownedPets.dog > 0){
+        if(dogState.state==='roam'){
+            let tx=dogState.tx-dogState.x,ty=dogState.ty-dogState.y;
+            if(Math.sqrt(tx*tx+ty*ty)<5){let a=Math.random()*Math.PI*2,r=Math.random()*MAP_R;dogState.tx=Math.cos(a)*r;dogState.ty=Math.sin(a)*r;}
+            dogState.x+=(tx/Math.sqrt(tx*tx+ty*ty))*2.5;dogState.y+=(ty/Math.sqrt(tx*tx+ty*ty))*2.5;
+            dogState.timer--; if(dogState.timer<=0){dogState.state='deliver';dogState.timer=7200;ann("Woof!",dogState.x,dogState.y);}
+        }else if(dogState.state==='deliver'){
+            let dx=player.x-dogState.x,dy=player.y-dogState.y,d=Math.sqrt(dx*dx+dy*dy);
+            if(d<50){
+                let finds = ownedPets.dog; 
+                for(let i=0;i<finds;i++) {
+                    let s=SEED_DB[Math.floor(Math.random()*5)];
+                    if(!inventory.seeds[s.id])inventory.seeds[s.id]=0; inventory.seeds[s.id]++;
+                }
+                ann("Found Items!",player.x,player.y);dogState.state='roam';
+            }else{dogState.x+=(dx/d)*4;dogState.y+=(dy/d)*4;}
+        }
+    }
+    if(ownedPets.cat > 0){if(catState.state==='awake'){catState.timer++;if(Math.random()<0.02){catState.x=-200+Math.random()*480;catState.y=-160+Math.random()*400;}if(catState.timer>500){catState.state='sleeping';catState.timer=0;}}else{catState.timer++;if(catState.timer>500){catState.state='awake';catState.timer=0;}}}
+
+    checkInteract();
+    if(keys['Space']&&!keys.lock){handleInteract();keys.lock=true;}if(!keys['Space'])keys.lock=false;
+}
+
+function draw() {
+    let cx=canvas.width/2-player.x, cy=canvas.height/2-player.y;
+    ctx.fillStyle='#1b5e20';ctx.fillRect(0,0,canvas.width,canvas.height); ctx.save(); ctx.translate(cx,cy);
+    forestTrees.forEach(t=>{if(t.x+cx>-50&&t.x+cx<canvas.width+50&&t.y+cy>-50&&t.y+cy<canvas.height+50){ctx.fillStyle=t.c;ctx.beginPath();ctx.arc(t.x,t.y,t.s,0,Math.PI*2);ctx.fill();}});
+    ctx.beginPath();ctx.arc(0,0,MAP_R+30,0,Math.PI*2);ctx.fillStyle='#3e2723';ctx.fill();ctx.beginPath();ctx.arc(0,0,MAP_R,0,Math.PI*2);ctx.fillStyle='#66bb6a';ctx.fill();
+    drawPath(0,0,-350,-350,'#d7ccc8');drawPath(0,0,0,-400,'#cfd8dc');drawPath(0,0,350,-350,'#ffe0b2');drawPath(0,0,-800,0,'#fff59d');
+    
+    ctx.fillStyle = '#424242';
+    ctx.fillRect(-MAP_R, 680, MAP_R*2, 40); 
+    ctx.fillStyle = '#212121';
+    for(let i=0; i<60; i++) { 
+        ctx.fillRect(-MAP_R + (i*40) + ((Date.now()/5)%40), 685, 20, 30); 
+    }
+
+    npcs.forEach(n=>{ drawBuild(n.x,n.y-80,n.l,n.t);drawMonkey(n.x,n.y,n.c,false); });
+
+    activeBrainrots.forEach(b => {
+        ctx.fillStyle = 'white';
+        ctx.font = '30px Arial';
+        ctx.fillText(b.icon, b.x-15, b.y);
+        ctx.font = '10px Quicksand';
+        ctx.fillStyle = 'yellow';
+        ctx.fillText(b.name, b.x-20, b.y-35);
+    });
+
+    if(ownedPets.cat > 0&&catState.state==='sleeping'){ctx.beginPath();ctx.arc(catState.x,catState.y,150,0,Math.PI*2);ctx.fillStyle='rgba(0,255,0,0.2)';ctx.fill();ctx.strokeStyle='rgba(0,255,0,0.5)';ctx.stroke();}
+    
+    plots.forEach(p=>{
+        ctx.save();ctx.translate(p.x,p.y);
+        ctx.beginPath();ctx.roundRect(0,0,p.w,p.h,15);
+        if(p.type === 'brainrot') { ctx.fillStyle='#4a148c'; ctx.strokeStyle='#7b1fa2'; } else { ctx.fillStyle='#4e342e'; ctx.strokeStyle='#3e2723'; }
+        ctx.fill();ctx.lineWidth=4;ctx.stroke();
+        
+        // Sprinkler graphic
+        if(p.sprinkler) { ctx.font='20px Arial'; ctx.fillStyle='white'; ctx.fillText('🚿', 5, 20); }
+
+        if(p.state>0){
+            if(p.type === 'brainrot') {
+                let br = BRAINROT_DB.find(b=>b.id === p.seedId);
+                if(br) { ctx.font='30px Arial'; ctx.textAlign='center'; ctx.fillText(br.icon, 35, 45); }
+            } else {
+                let s=SEED_DB[p.seedId];
+                if(s){
+                    if(p.state===1){
+                        let sc=p.growth/100;
+                        ctx.fillStyle='#a5d6a7';ctx.beginPath();ctx.arc(35,35,20*sc,0,Math.PI*2);ctx.fill();
+                        ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='16px Arial';ctx.textAlign='center';ctx.fillText(s.icon,35,40);
+                    }else{
+                        ctx.fillStyle=s.color;ctx.beginPath();ctx.arc(35,35,25,0,Math.PI*2);ctx.fill();
+                        ctx.fillStyle='#fff';ctx.font='20px Arial';ctx.textAlign='center';ctx.fillText(s.icon,35,42);
+                        let iy=15;if(p.mutations.includes('wet')){ctx.fillText('💧',55,iy);iy+=15;}if(p.mutations.includes('burned')){ctx.fillText('🔥',55,iy);}
+                    }
+                }
+            }
+        }
+        ctx.restore();
+    });
+
+    if(ownedPets.dog > 0)drawPet(dogState.x,dogState.y,'🐶');
+    if(ownedPets.cat > 0){drawPet(catState.x,catState.y,'🐱');if(catState.state==='sleeping')ctx.fillText('Zzz',catState.x,catState.y-20);}
+    meteorites.forEach(m=>{ctx.fillStyle='#ff5722';ctx.beginPath();ctx.arc(m.x,m.y,10,0,Math.PI*2);ctx.fill();});
+    
+    drawMonkey(player.x,player.y,'#1e88e5',true,player.anim);
+    
+    if(interactionTimer > 0) {
+        ctx.fillStyle = 'white'; ctx.fillRect(player.x-20, player.y-60, 40, 5);
+        ctx.fillStyle = 'lime'; ctx.fillRect(player.x-20, player.y-60, 40 * (interactionTimer/60), 5);
+    }
+
+    if(Date.now() < events.volcano){ctx.fillStyle='rgba(255,50,0,0.2)';ctx.fillRect(player.x-2000,player.y-2000,4000,4000);}
+    if(Date.now() < events.rain){ctx.strokeStyle='rgba(100,200,255,0.5)';ctx.lineWidth=2;for(let i=0;i<50;i++){let rx=player.x+(Math.random()*1000-500),ry=player.y+(Math.random()*800-400);ctx.beginPath();ctx.moveTo(rx,ry);ctx.lineTo(rx-5,ry+15);ctx.stroke();}}
+    ctx.restore();
+    nCtx.clearRect(0,0,nCtx.canvas.width,nCtx.canvas.height);nCtx.font="bold 24px Quicksand";nCtx.textAlign="center";
+    for(let i=announcements.length-1;i>=0;i--){let a=announcements[i],sx=cx+a.x,sy=cy+a.y;nCtx.fillStyle=`rgba(255,255,255,${a.life/60})`;nCtx.strokeStyle=`rgba(0,0,0,${a.life/60})`;nCtx.lineWidth=4;nCtx.strokeText(a.txt,sx,sy);nCtx.fillText(a.txt,sx,sy);a.y-=0.2;a.life--;if(a.life<=0)announcements.splice(i,1);}
+}
+
+function drawMonkey(x,y,c,p,a=0){let h=p?Math.abs(Math.sin(a*3)*5):0;ctx.save();ctx.translate(x,y-h);ctx.fillStyle='rgba(0,0,0,0.2)';ctx.beginPath();ctx.ellipse(0,25+h,15,5,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=c;ctx.beginPath();ctx.roundRect(-15,-10,30,30,10);ctx.fill();ctx.fillStyle='#795548';ctx.beginPath();ctx.arc(0,-15,18,0,Math.PI*2);ctx.fill();ctx.fillStyle='#d7ccc8';ctx.beginPath();ctx.ellipse(0,-12,14,10,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#333';ctx.beginPath();ctx.arc(-5,-14,2,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(5,-14,2,0,Math.PI*2);ctx.fill();ctx.fillStyle='#5d4037';ctx.beginPath();ctx.roundRect(-10,15,8,10,4);ctx.fill();ctx.beginPath();ctx.roundRect(2,15,8,10,4);ctx.fill();ctx.restore();}
+function drawBuild(x,y,l,t){ctx.fillStyle='#fff';ctx.beginPath();ctx.roundRect(x-90,y-60,180,120,20);ctx.fill();ctx.fillStyle=t==='seeds'?'#ff7043':t==='tools'?'#42a5f5':t==='sell'?'#fff59d':'#ab47bc';ctx.beginPath();ctx.roundRect(x-100,y-80,200,40,15);ctx.fill();ctx.fillStyle='#333';ctx.font="bold 20px Quicksand";ctx.textAlign='center';ctx.fillText(l,x,y-90);}
+function drawPath(x1,y1,x2,y2,c){ctx.strokeStyle=c;ctx.lineWidth=60;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
+function drawPet(x,y,i){ctx.font="30px Arial";ctx.fillText(i,x,y);}
+window.addEventListener('keydown',e=>{keys[e.code]=true;if(e.key>='1'&&e.key<='9'){if(selectedInvItem&&document.getElementById('backpack-modal').style.display==='block'){equip(e.key-1,selectedInvItem);}else{activeSlot=e.key-1;renderHotbar();}}});
+window.addEventListener('keyup',e=>keys[e.code]=false);
+
+function equip(slot, item) {
+    hotbar[slot] = { type:item.type, id:item.id }; 
+    renderHotbar(); 
+    ann("Equipped!", player.x, player.y); 
+    tab(currentTab);
+    saveGame();
+}
+
+function checkInteract(){interact=null;document.getElementById('bubble').style.display='none';let cx=canvas.width/2-player.x,cy=canvas.height/2-player.y;npcs.forEach(n=>{if(Math.hypot(player.x-n.x,player.y-n.y)<100){interact={type:'shop',id:n.t};showBubble(cx+n.x,cy+n.y-50,n.t==='sell'?"TALK":"OPEN");}});plots.forEach(p=>{if(Math.hypot(player.x-(p.x+35),player.y-(p.y+35))<60){interact={type:'plot',obj:p};let txt=p.state===0?"PLANT":p.state===1?Math.floor(p.growth)+"%":"HARVEST";if(p.type==='brainrot' && p.state===1) txt="CONTAINED"; showBubble(cx+p.x+35,cy+p.y,txt);}});}
+function showBubble(x,y,t){let b=document.getElementById('bubble');b.style.display='block';b.style.left=x+'px';b.style.top=y+'px';b.innerText=t;}
+
+function handleInteract(){
+    if(!interact)return;
+    if(interact.type==='shop'){
+        if(interact.id==='sell')document.getElementById('sell-modal').style.display='block';
+        else openShop(interact.id);
+    } else if(interact.type==='plot'){
+        let p=interact.obj,eq=hotbar[activeSlot];
+        
+        // BRAINROT PLACEMENT
+        if(p.type === 'brainrot') {
+            if(p.state === 0 && eq && eq.type === 'brainrot') {
+                if(inventory.brainrots[eq.id] > 0) {
+                    inventory.brainrots[eq.id]--;
+                    p.seedId = eq.id; p.state = 1; 
+                    ann("Contained!", p.x, p.y);
+                    if(inventory.brainrots[eq.id]<=0) { hotbar[activeSlot]=null; renderHotbar(); }
+                    saveGame();
+                }
+            }
+            return;
+        }
+
+        // NORMAL PLOTS
+        if(eq && eq.type === 'auto') { // Sprinkler Placement
+            if(!p.sprinkler && inventory.tools[eq.id] > 0) {
+                p.sprinkler = { id: eq.id, life: TOOLS.find(t=>t.id===eq.id).life };
+                inventory.tools[eq.id]--;
+                ann("Placed Sprinkler!", p.x, p.y);
+                if(inventory.tools[eq.id] <= 0) { hotbar[activeSlot] = null; renderHotbar(); }
+                saveGame();
+            }
+            return;
+        }
+
+        if(eq&&eq.type==='tool'&&eq.id==='shovel'){
+            if(p.state>0 || p.sprinkler){
+                p.state=0;p.seedId=null;p.growth=0;p.mutations=[]; p.sprinkler=null;
+                ann("Cleared",p.x,p.y);sfx('dig');
+                saveGame();
+            }
+            return;
+        }
+        if(p.state===0){
+            if(eq&&eq.type==='seed'){
+                if(inventory.seeds[eq.id]>0){
+                    inventory.seeds[eq.id]--;
+                    if(inventory.seeds[eq.id]<=0){delete inventory.seeds[eq.id];hotbar[activeSlot]=null;renderHotbar();}
+                    p.seedId=eq.id;p.state=1;p.growth=0;p.mutations=[];
+                    ann("Planted",p.x,p.y);sfx('plant');
+                    renderHotbar();
+                    saveGame();
+                }else{ann("Out of seeds!",p.x,p.y);hotbar[activeSlot]=null;renderHotbar();}
+            }
+        } else if(p.state===1&&eq&&eq.id==='bucket'&&inventory.tools['bucket']>0){
+            inventory.tools['bucket']--;p.growth+=5;ann("Watered",p.x,p.y);
+            if(inventory.tools['bucket']<=0){delete inventory.tools['bucket'];hotbar[activeSlot]=null;renderHotbar();}
+            saveGame();
+        } else if(p.state===2){
+            let s=SEED_DB[p.seedId];
+            let yieldCount = s.type === 'bush' ? Math.floor(Math.random() * 3) + 2 : 1;
+            if(Date.now() < events.luck) yieldCount += 2;
+            for(let k=0; k<yieldCount; k++){
+                let sz=SIZES[Math.floor(Math.random()*SIZES.length)];
+                inventory.produce.push({id:p.seedId,size:sz.id,mutations:[...p.mutations]});
+            }
+            ann(`Got ${yieldCount}x ${s.name}`,p.x,p.y);sfx('coin');
+            if(s.type==='bush'){p.state=1;p.growth=0;}else{p.state=0;p.seedId=null;p.mutations=[];}
+            saveGame();
+        }
+    }
+}
+
+function openShop(t){document.getElementById('shop-modal').style.display='flex';document.getElementById('shop-title').innerText=t.toUpperCase();let l=document.getElementById('shop-content');l.innerHTML='';let arr=t==='seeds'?SEED_DB:t==='tools'?TOOLS:PETS;let stk=t==='seeds'?stock.seeds:t==='tools'?stock.tools:stock.pets;
+    let totalPets = (ownedPets.dog||0) + (ownedPets.cat||0);
+    arr.forEach(i=>{if(i.cost===0)return;let qty=stk[i.id];
+        let cantBuy = false;
+        if(t==='pets') { if(totalPets >= 5) cantBuy = true; } else { if(qty<=0) cantBuy = true; }
+        let r=document.createElement('div');r.className=`shop-row ${cantBuy?'disabled':''}`;
+        let sub = t==='pets' ? `Owned: ${ownedPets[i.id]||0}` : `${qty} Stock`;
+        r.innerHTML=`<div><span style="font-size:24px">${i.icon}</span> <b>${i.name}</b> <small>${sub}</small></div><b>$${i.cost.toLocaleString()}</b>`;if(!cantBuy)r.onclick=()=>buy(t,i);l.appendChild(r);});}
+
+function buy(t,i){
+    if(money>=i.cost){
+        if(t==='pets' && (ownedPets.dog+ownedPets.cat) >= 5) { ann("Max 5 Pets!", player.x, player.y); sfx('error'); return; }
+        
+        money-=i.cost;sfx('buy');
+        if(t==='seeds'){
+            stock.seeds[i.id]--;if(!inventory.seeds[i.id])inventory.seeds[i.id]=0;inventory.seeds[i.id]++;ann(`+1 ${i.name}`,player.x,player.y);
+            let emptyIdx = hotbar.findIndex(x => x === null);
+            if(emptyIdx > -1) { hotbar[emptyIdx] = { type: 'seed', id: i.id }; renderHotbar(); }
+        }
+        else if(t==='tools'){
+            stock.tools[i.id]--;
+            // FIXED: Add to inventory, not activeSprinklers
+            if(!inventory.tools[i.id]) inventory.tools[i.id]=0;
+            inventory.tools[i.id]++;
+            ann(`+1 ${i.name}`,player.x,player.y);
+            let emptyIdx = hotbar.findIndex(x => x === null);
+            if(emptyIdx > -1) { hotbar[emptyIdx] = { type: i.type==='manual'?'tool':'auto', id: i.id }; renderHotbar(); }
+        }
+        else if(t==='pets'){
+            stock.pets[i.id]--;
+            ownedPets[i.id] = (ownedPets[i.id]||0) + 1;
+            ann(`+1 ${i.name}`,player.x,player.y);
+        }
+        updHUD();openShop(t);
+        if(document.getElementById('backpack-modal').style.display==='block')tab(currentTab);
+        saveGame();
+    } else {ann("Not Enough Money!",player.x,player.y);sfx('error');}
+}
+
+function openBackpack(){document.getElementById('backpack-modal').style.display='block';tab('seeds');}
+function tab(t){
+    currentTab=t; 
+    document.querySelectorAll('.tab-btn').forEach(b=>{b.classList.remove('active'); if(b.id==='tab-'+t)b.classList.add('active')});
+    let g=document.getElementById('inv-grid'); g.innerHTML='';
+    let foundItems = false;
+
+    if(t==='seeds') SEED_DB.forEach(s=>{ 
+        let total=inventory.seeds[s.id]||0; let used=hotbar.filter(h=>h&&h.type==='seed'&&h.id===s.id).length;
+        if(total-used > 0) { mkInv(g,s,total-used,'seed'); foundItems=true; }
+    });
+    if(t==='produce') { let c={}; inventory.produce.forEach(i=>c[i.id]=(c[i.id]||0)+1); for(let id in c) { mkInv(g,SEED_DB[id],c[id],'produce'); foundItems=true; } }
+    
+    // FIX: Sprinklers now show up correctly
+    if(t==='tools') TOOLS.forEach(x=>{ 
+        let total = inventory.tools[x.id] || (x.id==='shovel'?1:0);
+        let used=hotbar.filter(h=>h&&h.type=== (x.type==='manual'?'tool':'auto') && h.id===x.id).length;
+        if(total-used > 0) { mkInv(g,x,total-used,x.type==='manual'?'tool':'auto'); foundItems=true; }
+    });
+
+    if(t==='pets') PETS.forEach(p=>{if(ownedPets[p.id]>0) { mkInv(g,p,'x'+ownedPets[p.id],'pet'); foundItems=true; } });
+    if(t==='brainrots') BRAINROT_DB.forEach(b=>{ 
+        if(inventory.brainrots[b.id] > 0) { mkInv(g,b,'x'+inventory.brainrots[b.id],'brainrot'); foundItems=true; }
+    });
+    
+    if(!foundItems) g.innerHTML = '<div class="empty-msg">No items here!</div>';
+}
+function mkInv(p,i,q,t){let d=document.createElement('div');d.className='inv-item';d.innerHTML=`<div style="font-size:24px">${i.icon}</div><div>${i.name}</div><div style="color:#e53935">${q}</div>`;if(t!=='pet'&&t!=='produce')d.onclick=()=>{document.querySelectorAll('.inv-item').forEach(x=>x.classList.remove('selected'));d.classList.add('selected');selectedInvItem={type:t,id:i.id};};p.appendChild(d);}
+function renderHotbar(){for(let i=0;i<9;i++){let s=document.getElementById(`hb-i-${i}`),q=document.getElementById(`hb-q-${i}`),d=s.parentElement;if(i===activeSlot)d.classList.add('active');else d.classList.remove('active');let it=hotbar[i];if(it){
+    if(it.type==='brainrot') { let b=BRAINROT_DB.find(x=>x.id===it.id); s.innerText=b.icon; q.innerText=1; }
+    else if(it.type==='seed'){let x=SEED_DB[it.id];if(x){s.innerText=x.icon;q.innerText=1;}}
+    else if(it.type==='tool'||it.type==='auto'){let x=TOOLS.find(z=>z.id===it.id);if(x){s.innerText=x.icon;q.innerText="";}}
+    }else{s.innerText='';q.innerText='';}}}
+function sellAction(a){document.getElementById('sell-modal').style.display='none';if(a==='all'){let t=0;inventory.produce.forEach(i=>{let b=SEED_DB[i.id].sell,sz=SIZES.find(x=>x.id===i.size).m,m=1;if(i.mutations.includes('wet'))m*=1.5;if(i.mutations.includes('burned'))m*=3;t+=Math.floor(b*sz*m);});if(t>0){money+=t;inventory.produce=[];ann(`Sold $${t}`,player.x,player.y);sfx('coin');updHUD();saveGame();}else ann("No Produce",player.x,player.y);}}
+function triggerEvent(t,d){events[t]=Date.now()+d;ann(t.toUpperCase()+"!",player.x,player.y);}
+function ann(t,x,y){announcements.push({txt:t,x:x,y:y-50,life:300});}
+function restock(){SEED_DB.forEach(s=>stock.seeds[s.id]=Math.random()<s.rarity?Math.floor(Math.random()*(s.maxStock-s.minStock+1))+s.minStock:0);TOOLS.forEach(b=>{if(b.cost>0)stock.tools[b.id]=Math.random()<b.rarity?Math.floor(Math.random()*b.maxStock)+1:0;});PETS.forEach(p=>stock.pets[p.id]=5);nextRestock=Date.now()+300000;}
+function admStockSeeds(){SEED_DB.forEach(s=>stock.seeds[s.id]=50);ann("Seeds Stocked",player.x,player.y);}
+function admStockPets(){PETS.forEach(p=>stock.pets[p.id]=5);ann("Pets Stocked",player.x,player.y);}
+function admStockBoosters(){TOOLS.forEach(b=>{if(b.type!=='tool')stock.tools[b.id]=20;});ann("Boosters Stocked",player.x,player.y);}
+function tryAdmin(){if(admUnl)document.getElementById('admin-ui').style.display='block';else{if(prompt("Code:")==='9W8FGE76W'){admUnl=true;document.getElementById('admin-ui').style.display='block';}}}
+function admMoney(){money+=1e12;updHUD();}
+function admRestock(){nextRestock=Date.now();restock();ann("Restocked",player.x,player.y);}
+function admAnn(){ann("📢 "+document.getElementById('ann-txt').value,player.x,player.y-100);}
+function redeem(){if(document.getElementById('code-in').value==='BETARELEASE!'&&!redeemed.includes('B')){money+=100;redeemed.push('B');updHUD();ann("Redeemed!",player.x,player.y);}}
+function updVol(){document.getElementById('bgm').volume=document.getElementById('vol-slider').value/100;}
+function updHUD(){document.getElementById('money-val').innerText=money.toLocaleString(); renderHotbar();}
+function openSettings(){document.getElementById('settings-ui').style.display='block';}
+function hardReset(){localStorage.removeItem(SAVE_KEY); location.reload();}
+function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;nCtx.canvas.width=window.innerWidth;nCtx.canvas.height=window.innerHeight;}
+window.onresize = resize;
+
+const ac=new (window.AudioContext||window.webkitAudioContext)();
+function sfx(t) {let o=ac.createOscillator(),g=ac.createGain(),n=ac.currentTime; o.connect(g); g.connect(ac.destination); if(t==='buy'){o.frequency.value=400;o.frequency.linearRampToValueAtTime(600,n+0.1);} else if(t==='coin'){o.frequency.value=1000;o.frequency.linearRampToValueAtTime(1500,n+0.2);} else if(t==='plant'){o.type='triangle';o.frequency.value=300;} else if(t==='dig'){o.type='square';o.frequency.value=100;} else if(t==='error'){o.type='sawtooth';o.frequency.value=100;} g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,n+0.1); o.start(); o.stop(n+0.1);}
+
+function loadGame() {
+    try {
+        let d = JSON.parse(localStorage.getItem(SAVE_KEY));
+        if (!d) { initNewGame(); return; }
+
+        money = d.money || 20;
+        redeemed = d.redeemed || [];
+        ownedPets = d.ownedPets || {dog: 0, cat: 0};
+        inventory = d.inventory || {};
+        if (!inventory.seeds) inventory.seeds = {};
+        if (!inventory.tools) inventory.tools = {'shovel':1};
+        if (!inventory.brainrots) inventory.brainrots = {}; 
+        if (!Array.isArray(inventory.produce)) inventory.produce = [];
+        hotbar = Array.isArray(d.hotbar) ? d.hotbar : new Array(9).fill(null);
+        if (!hotbar[0]) hotbar[0] = {type: 'tool', id: 'shovel'};
+        
+        let lastSaveTime = d.time || Date.now();
+        let now = Date.now();
+        let secondsPassed = (now - lastSaveTime) / 1000;
+        if(secondsPassed > 86400) secondsPassed = 86400; 
+
+        if (Array.isArray(d.plots)) {
+            // MERGE OLD PLOTS WITH NEW PLOT STRUCTURE
+            // If old save has fewer plots than new count, we need to regenerate
+            if(d.plots.length < 36) { // 30 normal + 6 brainrot
+                initGarden();
+                // Copy old data over new data
+                for(let i=0; i<d.plots.length; i++) {
+                    if(d.plots[i] && plots[i]) {
+                        plots[i].seedId = d.plots[i].seedId;
+                        plots[i].state = d.plots[i].state;
+                        plots[i].growth = d.plots[i].growth;
+                    }
+                }
+            } else {
+                plots = d.plots;
+            }
+            
+            // Calc Growth
+            plots.forEach(p => {
+                // Ensure properties exist
+                if(!p.mutations) p.mutations = [];
+                // Re-add sprinkler if missing structure
+                if(p.type === 'normal' && p.state === 1 && p.seedId !== null && secondsPassed > 1) {
+                    let s = SEED_DB[p.seedId];
+                    if(s) {
+                        let growthPerSec = 100 / (s.time * 60);
+                        if (ownedPets.cat > 0) growthPerSec *= (1 + (ownedPets.cat * 0.2));
+                        p.growth += growthPerSec * secondsPassed;
+                        if (p.growth >= 100) { p.growth = 100; p.state = 2; }
+                    }
+                }
+            });
+        } else {
+            initGarden();
+        }
+        
+        if(secondsPassed > 60) setTimeout(() => ann(`Offline: ${Math.floor(secondsPassed/60)}m passed`, player.x, player.y), 1000);
+        updHUD();
+    } catch (e) {
+        console.error("Save fix failed, resetting.", e);
+        initNewGame();
+    }
+}
+
+window.addEventListener('beforeunload', () => { saveGame(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveGame(); });
+</script>
+</body>
+</html>
